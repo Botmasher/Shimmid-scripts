@@ -4,38 +4,77 @@ using System.Collections;
 public class InputManager : MonoBehaviour {
 	
 	public GameObject player;
+	public GameObject world;
 	[Range(0,500)]public float playerSpeed = 100f;
 
 	float horiz;
 	float vert;
-	bool action;
-
-
-	void Start () {
-	}
-
+	bool pressingAction;
+	bool movingPlayer=false;
+	bool restingPlayer=false;
+	
 
 	void Update () {
 
-		// check for button inputs
+		GetInputs ();
+  		
+		// decide if controls move player or world
+		if (!movingPlayer) {
+			ActWorld();
+		} else {
+			ActPlayer();
+		}
+
+	}
+
+	/**
+	 * 	Check for input
+	 */
+	void GetInputs () {
 		horiz = Input.GetAxis ("Horizontal");
 		vert = Input.GetAxis ("Vertical");
-		action = Input.GetButtonDown ("Jump");
+		pressingAction = Input.GetButtonDown ("Jump");
+	}
 
-		if (action) {
+	/**
+	 *	Use inputs to change player movement and actions
+	 */
+	void ActPlayer (){
+		if (pressingAction) {
 			if (player.GetComponent<Animator> ().GetBool ("isShell")) {
 				player.GetComponent<Animator> ().SetBool ("isShell", false);
 			} else {
 				player.GetComponent<Animator> ().SetBool ("isShell", true);
 			}
-		} else if (Mathf.Abs (horiz) > 0f) {
+		} else if (horiz > 0f) {
 			player.GetComponent<Animator> ().SetBool ("isWalking", true);
 			player.GetComponent<Rigidbody2D> ().AddForce (new Vector2 (horiz * playerSpeed * Time.deltaTime, 0f));
 		} else {
 			player.GetComponent<Animator> ().SetBool ("isWalking", false);
 		}
-
+		
+		// unused
 		if (vert != 0f) {}
+	}
+
+	/**
+	 *	Use inputs to change world movement and actions
+	 */
+	void ActWorld (){
+		if (pressingAction) {
+			// do some action
+		}
+
+		// rotate world around z with axis input
+		Debug.Log (world.transform.rotation.z);
+		world.transform.rotation = Quaternion.Lerp (world.transform.rotation, Quaternion.Euler(new Vector3(0f, 0f, horiz*20f)), 5f*Time.deltaTime);
+
+		if (!restingPlayer) {
+			player.GetComponent<Animator> ().SetBool ("isWalking", true);
+			player.transform.Translate (new Vector2 (horiz * playerSpeed * (world.transform.position.z*2000f) * Time.deltaTime, 0f) );
+		} else {
+			player.GetComponent<Animator> ().SetBool ("isWalking", false);
+		}
 
 	}
 
