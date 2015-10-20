@@ -18,7 +18,7 @@ public class InputManager : MonoBehaviour {
 
 		GetInputs ();
   		
-		// decide if controls move player or world
+		// decide to control player or world
 		if (!movingPlayer) {
 			ActWorld();
 		} else {
@@ -66,12 +66,11 @@ public class InputManager : MonoBehaviour {
 		}
 
 		// rotate world around z with axis input
-		Debug.Log (world.transform.rotation.z);
-		world.transform.rotation = Quaternion.Lerp (world.transform.rotation, Quaternion.Euler(new Vector3(0f, 0f, horiz*20f)), 5f*Time.deltaTime);
+		world.transform.rotation = Quaternion.Lerp (world.transform.rotation, Quaternion.Euler(new Vector3(0f, 0f, -horiz*20f)), 4f*Time.deltaTime);
 
 		if (!restingPlayer) {
 			player.GetComponent<Animator> ().SetBool ("isWalking", true);
-			player.transform.Translate (new Vector2 (horiz * playerSpeed * (world.transform.position.z*2000f) * Time.deltaTime, 0f) );
+			player.transform.Translate (new Vector2 ((0.1f+-horiz * playerSpeed * (world.transform.rotation.z*0.05f)) * Time.deltaTime, 0f) );
 		} else {
 			player.GetComponent<Animator> ().SetBool ("isWalking", false);
 		}
