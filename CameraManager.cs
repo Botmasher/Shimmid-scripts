@@ -12,6 +12,6 @@ public class CameraManager : MonoBehaviour {
 
 	void Update () {
 		// follow along with player's x-y
-		this.transform.position = Vector3.Lerp (this.transform.position, new Vector3 (player.position.x, player.position.y, this.transform.position.z), Time.deltaTime);
+		this.transform.position = Vector3.Lerp (this.transform.position, new Vector3 (player.position.x, player.position.y, this.transform.position.z), 2f*Time.deltaTime);
 	}
 }
