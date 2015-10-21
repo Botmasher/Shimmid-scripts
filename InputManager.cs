@@ -20,6 +20,9 @@ public class InputManager : MonoBehaviour {
 	public bool restingPlayer=false;		// set the player character to idle
 
 	float horiz;							// get horizontal axis
+	float pressWeight;						// how much beat keypress contributes to speed
+	float pressTime;						// how long since last beat keypress
+
 	float vert;								// get vertical axis
 	Vector3 worldRot;						// amount to rotate the world this update
 	bool pressingAction1;					// whether or not player is pressing an action button
@@ -47,9 +50,24 @@ public class InputManager : MonoBehaviour {
 	 * 	Check for input
 	 */
 	void GetInputs () {
-		horiz = Input.GetAxis ("Horizontal");
-		vert = Input.GetAxis ("Vertical");
-		pressingAction1 = Input.GetButtonDown ("Jump");
+		// take horizontal from left/right keys
+		//horiz = Input.GetAxis ("Horizontal");
+
+		// set horizontal based on press frequency
+		if (Input.GetButtonDown("Jump")) {
+			pressWeight = 1f;
+			pressTime = 0f;
+		} else if (pressTime < 0.4f) {
+			pressWeight = pressWeight;
+			pressTime += Time.deltaTime;
+		} else {
+			pressWeight = 0f;
+			pressTime += Time.deltaTime;
+		}
+		horiz = Mathf.Lerp (horiz, pressWeight, Time.deltaTime);
+
+		//vert = Input.GetAxis ("Vertical");
+		pressingAction1 = Input.GetButtonDown ("Fire2");
 		pressingAction2 = Input.GetButtonDown ("Fire1");
 	}
 
@@ -72,9 +90,6 @@ public class InputManager : MonoBehaviour {
 		} else {
 			player.GetComponent<Animator> ().SetBool ("isWalking", false);
 		}
-		
-		// unused
-		if (vert != 0f) {}
 	}
 
 	/**
@@ -113,11 +128,10 @@ public class InputManager : MonoBehaviour {
 
 		// move non-idle, non-shelled player
 		if (!restingPlayer && !player.GetComponent<Animator>().GetBool ("isShell")) {
-			master.SetFloat("MasterPitch", 1f);
+			master.SetFloat("MasterPitch", horiz*1.5f);
 			player.GetComponent<Animator> ().SetBool ("isWalking", true);
 			if (horiz >= 0.8f) {
 				player.GetComponent<Animator> ().SetBool ("isRunning", true);
-				master.SetFloat("MasterPitch", 2f);
 			} else {
 				player.GetComponent<Animator> ().SetBool ("isRunning", false);
 			}
