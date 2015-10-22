@@ -6,6 +6,7 @@ public class SafetyNet : MonoBehaviour {
 	public float lifetime=2f;
 	private bool isBlinking;
 
+
 	void Start() {
 		StartCoroutine (SelfDestruct(lifetime));
 	}

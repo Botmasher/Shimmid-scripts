@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class InputManager : MonoBehaviour {
 	
@@ -8,7 +9,6 @@ public class InputManager : MonoBehaviour {
 	public GameObject world;				// world to manipulate with input
 	public GameObject safetyNet;			// platform to instantiate below player on action
 	private GameObject thisNet;				// point to instance of safetyNet
-	public UnityEngine.Audio.AudioMixer master;
 
 	[Range(0,500)]
 	public float playerSpeed = 100f;		// multiplier to player movement
@@ -19,19 +19,21 @@ public class InputManager : MonoBehaviour {
 	public bool movingPlayer=false;			// is the input moving the player or the world?
 	public bool restingPlayer=false;		// set the player character to idle
 
-	float horiz;							// get horizontal axis
-	float pressWeight;						// how much beat keypress contributes to speed
-	float pressTime;						// how long since last beat keypress
+	// track press timing
+	float pressTime;											// how long since last beat keypress
+	public static List<float> pressAvgs = new List<float> ();	// average time between keypresses (used to judge good/bad beatkeeping)
 
 	float vert;								// get vertical axis
 	Vector3 worldRot;						// amount to rotate the world this update
 	bool pressingAction1;					// whether or not player is pressing an action button
 	bool pressingAction2;					// whether or not player is pressing an action button
 
+
 	void Start () {
 		// set action countdown clock
 		coolDown = actionTimer;
 	}
+
 
 	void Update () {
 
@@ -50,21 +52,20 @@ public class InputManager : MonoBehaviour {
 	 * 	Check for input
 	 */
 	void GetInputs () {
-		// take horizontal from left/right keys
-		//horiz = Input.GetAxis ("Horizontal");
-
-		// set horizontal based on press frequency
+		// set pitch (and, by extension, x-mvmt) based on press frequency
+		// start pitching up
 		if (Input.GetButtonDown("Jump")) {
-			pressWeight = 1f;
-			pressTime = 0f;
+			MusicManager.pitch = 1f;
+			pressAvgs.Add (pressTime);		// add to list of presstimes to judge beatkeeping skills
+			pressTime = 0f;					// reset time since last press
+		// wait a bit for button rhythm window before changing pitch
 		} else if (pressTime < 0.4f) {
-			pressWeight = pressWeight;
 			pressTime += Time.deltaTime;
+		// start pitching down
 		} else {
-			pressWeight = 0f;
+			MusicManager.pitch = 0f;
 			pressTime += Time.deltaTime;
 		}
-		horiz = Mathf.Lerp (horiz, pressWeight, Time.deltaTime);
 
 		//vert = Input.GetAxis ("Vertical");
 		pressingAction1 = Input.GetButtonDown ("Fire2");
@@ -83,9 +84,9 @@ public class InputManager : MonoBehaviour {
 				player.GetComponent<Animator> ().SetBool ("isShell", true);
 			}
 		// animation and movement on pressing axes
-		} else if (horiz > 0f) {
+		} else if (MusicManager.pitch > 0f) {
 			player.GetComponent<Animator> ().SetBool ("isWalking", true);
-			player.GetComponent<Rigidbody2D> ().AddForce (new Vector2 (horiz * playerSpeed * Time.deltaTime, 0f));
+			player.GetComponent<Rigidbody2D> ().AddForce (new Vector2 (MusicManager.pitch * playerSpeed * Time.deltaTime, 0f));
 		// idle state
 		} else {
 			player.GetComponent<Animator> ().SetBool ("isWalking", false);
@@ -101,7 +102,8 @@ public class InputManager : MonoBehaviour {
 		if (coolDown <= 0f) {
 			// reset player
 			player.GetComponent<Animator> ().SetBool ("isShell", false);
-			Player.shielded=false;
+			Player.shielded = false;
+			MusicManager.flangeRate = 0.1f;
 			// check for inputs and perform actions
 			if (pressingAction1) {
 				// shell protection
@@ -109,12 +111,11 @@ public class InputManager : MonoBehaviour {
 				player.GetComponent<Animator> ().SetBool ("isShell", true);
 				// tell player that Shimmid is protected
 				Player.shielded = true;
-				// prevent player movement while shelled
-				horiz = 0f;
 			} else if (pressingAction2) {
 				// place platform below
 				coolDown=actionTimer;
 				thisNet = Instantiate (safetyNet, new Vector2 (player.transform.position.x+1f,player.transform.position.y-0.86f), Quaternion.Euler(Vector3.zero)) as GameObject;
+				MusicManager.flangeRate = 10f;
 				// parent to world for tilt and actions
 				//thisNet.transform.parent = world.transform;
 			}
@@ -122,24 +123,17 @@ public class InputManager : MonoBehaviour {
 			// do no actions
 		}
 
-		// rotate world around z in proportion to positive axis input
-		//worldRot = (horiz > 0f) ? new Vector3(0f,0f,-horiz*20f) : Vector3.zero;
-		//world.transform.rotation = Quaternion.Lerp (world.transform.rotation, Quaternion.Euler(worldRot), 4f*Time.deltaTime);
-
 		// move non-idle, non-shelled player
 		if (!restingPlayer && !player.GetComponent<Animator>().GetBool ("isShell")) {
-			master.SetFloat("MasterPitch", horiz*1.5f);
 			player.GetComponent<Animator> ().SetBool ("isWalking", true);
-			if (horiz >= 0.8f) {
+			if (MusicManager.pitch >= 0.8f) {
 				player.GetComponent<Animator> ().SetBool ("isRunning", true);
 			} else {
 				player.GetComponent<Animator> ().SetBool ("isRunning", false);
 			}
-			// walk at pace influenced by world rotation and player speed
-			// SPEED OR SLOW DEPENDING ON ROTATING WORLD
-			//player.transform.Translate (new Vector2(0.004f + -horiz*playerSpeed*(world.transform.rotation.z*0.1f)*Time.deltaTime, 0f));
-
-			player.transform.Translate (new Vector2(0.004f + horiz*5f*Time.deltaTime, 0f));
+			// move player from song pitch
+			player.transform.position = Vector2.Lerp (player.transform.position, new Vector2 (player.transform.position.x + 0.004f + MusicManager.pitch*5f, player.transform.position.y), 0.5f * Time.deltaTime);
+			//player.transform.Translate (new Vector2(0.004f + MusicManager.pitch*5f*Time.deltaTime, 0f));
 		// idle player if not shelled
 		} else if (!player.GetComponent<Animator>().GetBool ("isShell")) {
 			// set idle animation and movement
